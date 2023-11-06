@@ -4,7 +4,7 @@ import { auth, db, storage } from "../firebase";
 import { addDoc, collection, updateDoc } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 
-const Form = styled.div`
+const Form = styled.form`
  display: flex;
  flex-direction: column;
  gap:10px;
@@ -69,38 +69,40 @@ export default function PostTweetForm () {
             setFile(files[0]);
         }
     };
-    const onSubmit = async(e:React.FormEvent<HTMLFormElement>)=>{
-        e.preventDefault();
-        const user = auth.currentUser();  
-     if (!user || isLoading || tweet==="" || tweet.length >180) return;
-        try{
-            setLoading(false);
-            const doc = await addDoc(collection(db, "tweets"),{
-                tweet,
-                createdAt: Date.now(),
-                username: user.displayName() || "익명",
-                userId: user.uid,
-            });
-            if (file) {
-                const locationRef = ref(
-                    storage,
-                    `tweets/${user.uid}-$(user.displayName)/$(doc.id)`
-                );
-                const result = await uploadBytes(locationRef, file);
-                const url = await getDownloadURL(result.ref);
-                await updateDoc(doc, {
-                    photo: url,
-                });
-            }
-            setTweet("");
-            setFile(null);
-            console.log(e);
-        } finally {
-            setLoading(false);
+    const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      const user = auth.currentUser;
+      if (!user || isLoading || tweet === "" || tweet.length > 180) return;
+      try {
+        setLoading(true);
+        const doc = await addDoc(collection(db, "tweets"), {
+          tweet,
+          createdAt: Date.now(),
+          username: user.displayName || "Anonymous",
+          userId: user.uid,
+        });
+        if (file) {
+          // const locationRef = ref(
+          //   storage,
+          //   `tweets/${user.uid}-${user.displayName}/${doc.id}`
+          // );
+          const locationRef = ref(storage, `tweets/${user.uid}/${doc.id}`)
+          const result = await uploadBytes(locationRef, file);
+          const url = await getDownloadURL(result.ref);
+          await updateDoc(doc, {
+            photo: url,
+          });
         }
+        setTweet("");
+        setFile(null);
+      } catch (e) {
+        console.log(e);
+      } finally {
+        setLoading(false);
+      }
     };
     return (
-        <Form onSubmit={onSubmit}>
+        <Form  onSubmit={onSubmit}>
             <TextArea
             required
             rows={5}
