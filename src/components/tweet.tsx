@@ -1,9 +1,9 @@
 import { styled } from "styled-components";
 import { ITweet } from "./timeline";
 import { auth, db, storage } from "../firebase";
-import { collection, deleteDoc, doc, updateDoc } from "firebase/firestore";
+import {  deleteDoc, doc, updateDoc } from "firebase/firestore";
 import { deleteObject, getDownloadURL, ref, uploadBytes } from "firebase/storage";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const Wrapper = styled.div`
    display: grid;
@@ -123,124 +123,123 @@ const CancelButton = styled.button`
    margin-left: 5px;
 `;
 
-export default function Tweet({ username, photo, tweet, userId, id}: ITweet){
-  const [ editmode, setEditmode] = useState(false);
-  const [ editTweet, setEditTweet] = useState(tweet);
-  const [ editFile, setEditFile] = useState<File | null>(null)
-  const [ isLoading, setLoading] = useState(false);
-  const [ file, setFile] = useState<File | null>(null);
+
+export default function Tweet({ username, photo, tweet, userId, id }: ITweet) {
+  const [editMode, setEditMode] = useState(false);
+  const [editTweet, setEditTweet] = useState(tweet);
+  const [editFile, setEditFile] = useState<File | null>(null);
+  const [isLoading, setLoading] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
   const user = auth.currentUser;
-  const onDelete = async() => {
+
+  const onDelete = async () => {
     const ok = confirm("이 트윗을 삭제하시겠습니까?");
-    if (!ok || user?.uid !== userId)  return;
-    try{
+    if (!ok || user?.uid !== userId) return;
+    try {
       await deleteDoc(doc(db, "tweets", id));
-      if (photo){
+      if (photo) {
         const photoRef = ref(storage, `tweets/${user.uid}/${id}`);
         await deleteObject(photoRef);
       }
-    } catch(e){
-      console.log(e);
-    }finally{
-      //
+    } catch (e) {
+      console.error(e);
+    } finally {
+      // ...
     }
-  }; 
-  const onEdit = async() => {
-    if( user?.uid !== userId)  return;
-    setEditmode(true);
   };
-  const onChangeTweet = (e: React.ChangeEvent<HTMLTextAreaElement>)=>{
+  const onEdit = () => {
+    if (user?.uid === userId) setEditMode(true);
+  };
+
+  const onChangeTweet = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setEditTweet(e.target.value);
-}
-const onFileChange=(e: React.ChangeEvent<HTMLInputElement>)=>{
-    const {files} =e.target;
-    if (files && files.length ===1){
-        setEditFile(files[0]);
+  };
+
+  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { files } = e.target;
+    if (files && files.length === 1) {
+      const newFile = files[0];
+      setEditFile(newFile);
     }
-};
-const onChangeTweets = async (e: React.FormEvent<HTMLFormElement>) => {
-  e.preventDefault();
-  const user = auth.currentUser;
-  if (!user || isLoading || tweet === "" || tweet.length > 180) return;
-  try {
-    setLoading(true);
-    if(tweet){
-      await updateDoc(doc(collection(db, "tweets", id)),{
-        tweet: tweet,
-      })
+  };
+
+  const onChangeTweets = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!user || isLoading || editTweet === "" || editTweet.length > 180) return;
+    try {
+      // Update the tweet with the new content and image
+      const tweetRef = doc(db, "tweets", id);
+      await updateDoc(tweetRef, { tweet: editTweet });
+
+      if (editFile) {
+        const locationRef = ref(storage, `tweets/${user.uid}/${id}`);
+        const result = await uploadBytes(locationRef, editFile);
+        const url = await getDownloadURL(result.ref);
+        await updateDoc(tweetRef, { photo: url });
+      }
+
+      setEditMode(false); // Exit edit mode after editing
+      setEditFile(null);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
     }
-    if (file) {
-      const locationRef = ref(storage, `tweets/${user.uid}/${id}`)
-      const result = await uploadBytes(locationRef, file);
-      const url = await getDownloadURL(result.ref);
-      await updateDoc(doc(collection(db,"tweets", id)), {
-        photo: url,
-      });
+  };
+
+  const onCancel = () => {
+    setEditMode(false);
+    setEditTweet(tweet);
+    if (photo) {
+      setEditFile(null); // Clear the editFile when canceling
     }
-    setEditTweet("");
-    setEditFile(null);
-  } catch (e) {
-    console.log(e);
-  } finally {
-    setLoading(false);
-  }
-};
-  
-const onCancel = () =>{
-  setEditmode(false);
-  setEditTweet(tweet);
-  if(photo){
-    setEditFile(file);
-  }
-};
-  
-    return (
-        <Wrapper>
-            
-            { editmode === true ?(
-              <>
-              <Form onSubmit={onChangeTweets} >
-              <TextArea
-            required
-            rows={5}
-            maxLength={180}
-            onChange={onChangeTweet}
-            value={tweet}
-            placeholder="글자를 입력하세요"
+  };
+
+  return (
+    <Wrapper>
+      {editMode === true ? (
+        <>
+          <Form onSubmit={onChangeTweets}>
+            <TextArea
+              required
+              rows={5}
+              maxLength={180}
+              onChange={onChangeTweet}
+              value={editTweet}
+              placeholder="글자를 입력하세요"
             />
             <AttachFileButton htmlFor="file">
-                {file ? "Photo added  ✅" : "Add photo"}
+              {editFile ? "New Photo added  ✅" : "Add New Photo"}
             </AttachFileButton>
             <AttachFileInput
-             onChange={onFileChange}
-             type="file"
-             id="file"
-             accept="image/"
-             />
-            <ChangeButton type="submit"
-             value={isLoading ? "Changing..." : "Change Tweet"}>Change</ChangeButton>
-             <CancelButton onClick={onCancel}>Cancel</CancelButton>
-        </Form>
-              </>
-            ):
-            <>
-            <Column>
-             <Username>{username}</Username>
-             <Payload>{tweet}</Payload>
-             {user?.uid === userId ?(
-               <Column>
+              onChange={onFileChange}
+              type="file"
+              id="file"
+              accept="image/"
+            />
+            <ChangeButton type="submit" disabled={isLoading}>
+              {isLoading ? "Changing..." : "Change Tweet"}
+            </ChangeButton>
+            <CancelButton onClick={onCancel}>Cancel</CancelButton>
+          </Form>
+        </>
+      ) : (
+        <>
+          <Column>
+            <Username>{username}</Username>
+            <Payload>{editTweet}</Payload> {/* Use editTweet here */}
+            {user?.uid === userId ? (
+              <Column>
                 <DeleteButton onClick={onDelete}>Delete</DeleteButton>
                 <EditButton onClick={onEdit}>Edit</EditButton>
               </Column>
-             ): null}
-            </Column>
-            <Column>
-            {photo ?(
-                  <Photo src={photo}/>
-            ): null}   
-            </Column> 
-            </>
-            }
-        </Wrapper>
-    );
+            ) : null}
+          </Column>
+          <Column>
+            {photo ? <Photo src={photo} /> : null}
+          </Column>
+        </>
+      )}
+    </Wrapper>
+  );
 }
