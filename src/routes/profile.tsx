@@ -3,7 +3,7 @@ import { auth, db, storage } from "../firebase";
 import { updateProfile } from "firebase/auth";
 import { styled } from "styled-components";
 import { useEffect, useState } from "react";
-import { collection, getDocs, limit, orderBy, query, where } from "firebase/firestore";
+import { collection, doc, getDocs, limit, orderBy, query, updateDoc, where } from "firebase/firestore";
 import Tweet from "../components/tweet";
 import { ITweet } from "../components/timeline";
 
@@ -44,9 +44,25 @@ const Tweets = styled.div`
   gap: 10px;
 `;
 
+ const NameButton = styled.button`
+background-color: white;
+color: black;
+font-weight: 600;
+border: 0;
+font-size: 12px;
+padding: 5px 10px;
+text-transform: uppercase;
+border-radius: 5px;
+cursor: pointer;
+margin-left: 5px;
+`;
+
+
 export default function Profile() {
     const user = auth.currentUser;
     const [ avatar, setAvatar] = useState(user?.photoURL);
+    const [ Editname, setEditname] = useState(false);
+    const [username, setUsername] = useState(user?.displayName ?? "");
     const [ tweets, setTweets] = useState<ITweet[]>([]);
     const onAvatarChange = async(e: React.ChangeEvent<HTMLInputElement>)=>{
       const { files } = e.target;
@@ -86,7 +102,28 @@ export default function Profile() {
     useEffect(()=>{
       fetchTweets();
     }, []);
+    
 
+    const onUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      setUsername(e.target.value);
+    };
+  
+    const onChangeUsername = async () => {
+      if (!user) return;
+  
+      try {
+        await updateProfile(user, {
+          displayName: username,
+        });
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setEditname(false);
+      }
+    };
+    const onEditName = async () => {
+      setEditname(true);
+    }
     return(
       <Wrapper>
         <AvatarUpload htmlFor="avatar">
@@ -111,7 +148,25 @@ export default function Profile() {
         type="file"
         accept="image/*"
         />
-        <Name>{user?.displayName?? "익명"}</Name>
+        
+   <Name>
+        {Editname ? (
+        
+          <input
+            type="text"
+            value={username}
+            onChange={onUsernameChange}
+            placeholder="Enter new username"
+          />
+         
+        ) : (
+          user?.displayName ?? "익명"
+        )}
+      </Name>
+     {!Editname && <NameButton onClick={onEditName}>닉네임 수정</NameButton>}
+      {Editname && (
+        <NameButton onClick={onChangeUsername}>닉네임 변경</NameButton>
+      )}
         <Tweets>
         {tweets.map((tweet) => (
           <Tweet key={tweet.id} {...tweet} />
