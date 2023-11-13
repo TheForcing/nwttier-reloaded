@@ -3,7 +3,7 @@ import { auth, db, storage } from "../firebase";
 import { updateProfile } from "firebase/auth";
 import { styled } from "styled-components";
 import { useEffect, useState } from "react";
-import { collection, doc, getDocs, limit, orderBy, query, updateDoc, where } from "firebase/firestore";
+import { collection,  getDocs, limit, orderBy, query,  where } from "firebase/firestore";
 import Tweet from "../components/tweet";
 import { ITweet } from "../components/timeline";
 

@@ -3,7 +3,7 @@ import { ITweet } from "./timeline";
 import { auth, db, storage } from "../firebase";
 import {  deleteDoc, doc, updateDoc } from "firebase/firestore";
 import { deleteObject, getDownloadURL, ref, uploadBytes } from "firebase/storage";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 const Wrapper = styled.div`
    display: grid;
@@ -129,7 +129,6 @@ export default function Tweet({ username, photo, tweet, userId, id }: ITweet) {
   const [editTweet, setEditTweet] = useState(tweet);
   const [editFile, setEditFile] = useState<File | null>(null);
   const [isLoading, setLoading] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
   const user = auth.currentUser;
 
   const onDelete = async () => {

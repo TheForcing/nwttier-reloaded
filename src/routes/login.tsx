@@ -2,8 +2,9 @@ import { signInWithEmailAndPassword } from "firebase/auth";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { auth } from "../firebase";
-import { Form, Input, Switcher, Title, Wrapper } from "../components/auth-coponents";
+import { Form, Input, Switcher, Title, Wrapper , Error} from "../components/auth-coponents";
 import GithunButton from "../components/github-btn";
+import { FirebaseError } from "firebase/app";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -30,7 +31,7 @@ export default function Login() {
       await signInWithEmailAndPassword(auth, email, password);
       navigate("/");
     } catch (e) {
-      if (e instanceof FirebaseError) {
+      if (e instanceof FirebaseError ) {
         setError(e.message);
       }
     } finally {
